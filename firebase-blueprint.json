@@ -1,0 +1,54 @@
+{
+  "entities": {
+    "Message": {
+      "title": "Message",
+      "description": "A single chat message.",
+      "type": "object",
+      "properties": {
+        "text": { "type": "string", "description": "The message content." },
+        "sender": { "type": "string", "enum": ["user", "zenia"], "description": "Who sent the message." },
+        "timestamp": { "type": "string", "format": "date-time", "description": "When the message was sent." },
+        "userId": { "type": "string", "description": "Owner of the message." }
+      },
+      "required": ["text", "sender", "timestamp", "userId"]
+    },
+    "MoodLog": {
+      "title": "Mood Log",
+      "description": "A user's mood entry.",
+      "type": "object",
+      "properties": {
+        "mood": { "type": "string", "description": "The mood label or value." },
+        "note": { "type": "string", "description": "Optional note about the mood." },
+        "timestamp": { "type": "string", "format": "date-time", "description": "When the mood was logged." },
+        "userId": { "type": "string", "description": "Owner of the mood log." }
+      },
+      "required": ["mood", "timestamp", "userId"]
+    },
+    "User": {
+      "title": "User Profile",
+      "description": "Information about the user.",
+      "type": "object",
+      "properties": {
+        "displayName": { "type": "string", "description": "The name the user wants Zenia to call them." },
+        "email": { "type": "string", "description": "User email." },
+        "gender": { "type": "string", "enum": ["masculino", "femenino", "no-binario"], "description": "User gender preference for treatment." },
+        "createdAt": { "type": "string", "format": "date-time", "description": "When the profile was created." }
+      },
+      "required": ["email", "createdAt"]
+    }
+  },
+  "firestore": {
+    "users/{userId}": {
+      "schema": "User",
+      "description": "User profiles and settings."
+    },
+    "conversations/{conversationId}": {
+      "schema": "Message",
+      "description": "Chat messages between the user and Zenia."
+    },
+    "mood_logs/{logId}": {
+      "schema": "MoodLog",
+      "description": "Mood tracking records."
+    }
+  }
+}
