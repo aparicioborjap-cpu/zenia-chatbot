@@ -3,12 +3,14 @@ import ReactMarkdown from 'react-markdown';
 import { Send, Loader2 } from 'lucide-react';
 import { useChat } from '../hooks/useChat.tsx';
 import { useUserProfile } from '../hooks/useUserProfile.tsx';
+import { useEvents } from '../hooks/useEvents.tsx';
 import { getZeniaResponse } from '../services/zeniaService.ts';
 import { motion, AnimatePresence } from 'motion/react';
 
 export default function ChatInterface() {
   const { messages, sendMessage, loading: chatLoading } = useChat();
   const { profile, loading: profileLoading, updateName, updateGender } = useUserProfile();
+  const { events } = useEvents();
   const [input, setInput] = useState('');
   const [isTyping, setIsTyping] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -19,7 +21,7 @@ export default function ChatInterface() {
       const welcome = async () => {
         setIsTyping(true);
         setTimeout(async () => {
-          await sendMessage("¡Hola! Soy Zenia, tu orbe de claridad y bienestar. Mi función es acompañarte usando la Terapia Cognitivo-Conductual para ayudarte a ver las cosas con más lógica y menos miedo.\n\nAntes de empezar, ¿cómo te llamas y cómo prefieres que me dirija a ti (femenino, masculino o neutro)? Me gustaría personalizar nuestro espacio.", "zenia");
+          await sendMessage("¡Hola! Soy Zenia, tu espacio de calma y claridad. Mi misión es estar a tu lado para ayudarte a desenredar esos nudos mentales que a veces nos complican el día, usando herramientas de Terapia Cognitivo-Conductual.\n\nPara que podamos empezar este camino juntos con mucha confianza, ¿cómo te llamas y cómo prefieres que me dirija a ti (femenino, masculino o neutro)? Me hace mucha ilusión conocerte.", "zenia");
           setIsTyping(false);
         }, 1000);
       };
@@ -32,6 +34,23 @@ export default function ChatInterface() {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
     }
   }, [messages, isTyping]);
+
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  useEffect(() => {
+    if (textareaRef.current) {
+      textareaRef.current.style.height = 'inherit';
+      const scrollHeight = textareaRef.current.scrollHeight;
+      textareaRef.current.style.height = `${Math.min(scrollHeight, 120)}px`;
+    }
+  }, [input]);
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      handleSend();
+    }
+  };
 
   const handleSend = async (e?: React.FormEvent) => {
     e?.preventDefault();
@@ -67,10 +86,31 @@ export default function ChatInterface() {
         parts: [{ text: m.text }]
       }));
 
-      // 4. Get AI response
-      const aiResponse = await getZeniaResponse(userMsg, history, profile?.displayName || 'Usuario', profile?.gender || 'femenino');
+      // 4. Prepare upcoming events context (next 30 days)
+      const now = new Date();
+      const in30Days = new Date();
+      in30Days.setDate(now.getDate() + 30);
+      
+      const upcomingEvents = events
+        .filter(e => {
+          const d = e.date?.toDate();
+          return d && d >= now && d <= in30Days;
+        })
+        .map(e => ({
+          title: e.title,
+          date: e.date?.toDate().toLocaleDateString('es-ES', { dateStyle: 'medium' })
+        }));
 
-      // 5. Save AI response to Firestore
+      // 5. Get AI response
+      const aiResponse = await getZeniaResponse(
+        userMsg, 
+        history, 
+        profile?.displayName || 'Usuario', 
+        profile?.gender || 'femenino',
+        upcomingEvents
+      );
+
+      // 6. Save AI response to Firestore
       if (aiResponse) {
         await sendMessage(aiResponse, 'zenia');
       }
@@ -122,7 +162,7 @@ export default function ChatInterface() {
             <div className="w-8 h-8 shrink-0 rounded-full bg-linear-to-tr from-pink-500 to-rose-400 shadow-[0_0_10px_rgba(244,114,182,0.5)] mt-1 opacity-50" />
             <div className="glass-zenia-msg px-5 py-3 rounded-3xl rounded-tl-none italic text-rose-700 text-xs flex items-center gap-2">
               <Loader2 className="w-3 h-3 animate-spin" />
-              Zenia está analizando...
+              Zenia está pensando...
             </div>
           </motion.div>
         )}
@@ -130,20 +170,22 @@ export default function ChatInterface() {
 
       <form 
         onSubmit={handleSend}
-        className="p-6 flex gap-3 items-center"
+        className="p-6 flex gap-3 items-end"
       >
         <div className="relative flex-1 flex items-center">
-          <input
-            type="text"
+          <textarea
+            ref={textareaRef}
             value={input}
             onChange={(e) => setInput(e.target.value)}
-            placeholder={!profile?.displayName ? "Escribe tu nombre..." : "Cuéntame qué estás rumiando ahora..."}
-            className="w-full glass-input rounded-full py-4 px-8 outline-hidden focus:ring-2 ring-rose-200/50 text-neutral-700 placeholder:text-neutral-400 transition-all text-sm"
+            onKeyDown={handleKeyDown}
+            rows={1}
+            placeholder={!profile?.displayName ? "Cuéntame cómo te llamas..." : "¿Qué hay en tu mente hoy? Te escucho..."}
+            className="w-full glass-input rounded-2xl py-4 pl-8 pr-16 outline-hidden focus:ring-2 ring-rose-200/50 text-neutral-700 placeholder:text-neutral-400 transition-all text-sm resize-none min-h-[56px] flex items-center"
           />
           <button
             type="submit"
             disabled={!input.trim() || isTyping}
-            className="absolute right-2 w-10 h-10 bg-rose-400 text-white rounded-full flex items-center justify-center shadow-md hover:bg-rose-500 disabled:opacity-50 transition-all active:scale-90"
+            className="absolute right-3 bottom-2 w-10 h-10 bg-rose-400 text-white rounded-full flex items-center justify-center shadow-md hover:bg-rose-500 disabled:opacity-50 transition-all active:scale-90"
           >
             <Send className="w-5 h-5" />
           </button>

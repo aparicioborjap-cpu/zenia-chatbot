@@ -35,6 +35,18 @@
         "createdAt": { "type": "string", "format": "date-time", "description": "When the profile was created." }
       },
       "required": ["email", "createdAt"]
+    },
+    "Event": {
+      "title": "Event",
+      "description": "An upcoming event or milestone for the user.",
+      "type": "object",
+      "properties": {
+        "title": { "type": "string", "description": "Name of the event." },
+        "date": { "type": "string", "format": "date-time", "description": "When the event occurs." },
+        "type": { "type": "string", "description": "Type of event (academic, social, work, etc.)." },
+        "userId": { "type": "string", "description": "Owner of the event." }
+      },
+      "required": ["title", "date", "userId"]
     }
   },
   "firestore": {
@@ -49,6 +61,10 @@
     "mood_logs/{logId}": {
       "schema": "MoodLog",
       "description": "Mood tracking records."
+    },
+    "events/{eventId}": {
+      "schema": "Event",
+      "description": "Scheduled events and milestones."
     }
   }
 }
