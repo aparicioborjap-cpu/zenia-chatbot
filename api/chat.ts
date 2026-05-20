@@ -2,8 +2,8 @@ import { GoogleGenerativeAI } from "@google/generative-ai";
 
 export const runtime = 'edge';
 
-export default async function handler(req: Request) {
-  if (req.method !== 'POST') {
+export default async function handler(request: Request) {
+  if (request.method !== 'POST') {
     return new Response(JSON.stringify({ error: 'Method not allowed' }), {
       status: 405,
       headers: { 'Content-Type': 'application/json' },
@@ -11,7 +11,7 @@ export default async function handler(req: Request) {
   }
 
   try {
-    const { userMessage, history, userName, gender, upcomingEvents } = await req.json();
+    const { userMessage, history, userName, gender, upcomingEvents } = await request.json();
 
     const apiKey = process.env.GEMINI_API_KEY;
     if (!apiKey) {
