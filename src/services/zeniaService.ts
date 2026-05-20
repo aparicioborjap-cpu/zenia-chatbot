@@ -26,26 +26,13 @@ export async function getZeniaResponseStream(
       throw new Error(errorData.error || "Failed to get AI response");
     }
 
-    const reader = response.body?.getReader();
-    const decoder = new TextDecoder();
-    let accumulatedText = "";
+    const data = await response.json();
+    const text = data.text || "";
+    onChunk(text);
+    return text;
 
-    if (!reader) {
-      throw new Error("No response reader available in response body.");
-    }
-
-    while (true) {
-      const { done, value } = await reader.read();
-      if (done) break;
-
-      const chunkText = decoder.decode(value, { stream: true });
-      accumulatedText += chunkText;
-      onChunk(chunkText);
-    }
-
-    return accumulatedText;
   } catch (error) {
-    console.error("Error calling Zenia API stream:", error);
+    console.error("Error calling Zenia API:", error);
     throw error;
   }
 }
