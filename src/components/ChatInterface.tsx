@@ -4,7 +4,7 @@ import { Send, Loader2 } from 'lucide-react';
 import { useChat } from '../hooks/useChat.tsx';
 import { useUserProfile } from '../hooks/useUserProfile.tsx';
 import { useEvents } from '../hooks/useEvents.tsx';
-import { getZeniaResponse } from '../services/zeniaService.ts';
+import { getZeniaResponseStream } from '../services/zeniaService.ts';
 import { motion, AnimatePresence } from 'motion/react';
 
 export default function ChatInterface() {
@@ -13,6 +13,8 @@ export default function ChatInterface() {
   const { events } = useEvents();
   const [input, setInput] = useState('');
   const [isTyping, setIsTyping] = useState(false);
+  const [streamingText, setStreamingText] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
 
   // Auto-welcome for new users
@@ -33,7 +35,7 @@ export default function ChatInterface() {
     if (scrollRef.current) {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
     }
-  }, [messages, isTyping]);
+  }, [messages, isTyping, error, streamingText]);
 
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
@@ -59,6 +61,7 @@ export default function ChatInterface() {
     const userMsg = input.trim();
     setInput('');
     setIsTyping(true);
+    setError(null);
 
     try {
       // 1. Save user msg to Firestore
@@ -81,10 +84,13 @@ export default function ChatInterface() {
       }
 
       // 3. Get history for AI context (last 15 messages)
-      const history = messages.slice(-15).map(m => ({
-        role: m.sender === 'user' ? 'user' : 'model' as 'user' | 'model',
-        parts: [{ text: m.text }]
-      }));
+      const history = messages
+        .filter(m => !(m.sender === 'user' && m.text === userMsg))
+        .slice(-15)
+        .map(m => ({
+          role: m.sender === 'user' ? 'user' : 'model' as 'user' | 'model',
+          parts: [{ text: m.text }]
+        }));
 
       // 4. Prepare upcoming events context (next 30 days)
       const now = new Date();
@@ -101,21 +107,28 @@ export default function ChatInterface() {
           date: e.date?.toDate().toLocaleDateString('es-ES', { dateStyle: 'medium' })
         }));
 
-      // 5. Get AI response
-      const aiResponse = await getZeniaResponse(
+      // 5. Stream AI response
+      setStreamingText("");
+      const aiResponse = await getZeniaResponseStream(
         userMsg, 
         history, 
         profile?.displayName || 'Usuario', 
         profile?.gender || 'femenino',
-        upcomingEvents
+        upcomingEvents,
+        (chunk) => {
+          setStreamingText(prev => (prev || "") + chunk);
+        }
       );
 
-      // 6. Save AI response to Firestore
+      // 6. Save complete AI response to Firestore
       if (aiResponse) {
         await sendMessage(aiResponse, 'zenia');
       }
-    } catch (error) {
-      console.error("Chat error:", error);
+      setStreamingText(null);
+    } catch (err: any) {
+      console.error("Chat error:", err);
+      setError(err.message || "Lo siento, hubo un error al conectar con Zenia. Por favor, inténtalo de nuevo.");
+      setStreamingText(null);
     } finally {
       setIsTyping(false);
     }
@@ -152,8 +165,23 @@ export default function ChatInterface() {
               </div>
             </motion.div>
           ))}
+          {streamingText !== null && (
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="flex gap-3 justify-start"
+            >
+              <div className="w-8 h-8 shrink-0 rounded-full bg-linear-to-tr from-pink-500 to-rose-400 shadow-[0_0_10px_rgba(244,114,182,0.5)] mt-1" />
+              <div className="max-w-[85%] px-5 py-4 rounded-3xl text-sm leading-relaxed glass-zenia-msg text-neutral-800 rounded-tl-none">
+                <p className="text-rose-900 font-bold mb-2 text-xs uppercase tracking-widest">Zenia</p>
+                <div className="markdown-body">
+                  <ReactMarkdown>{streamingText}</ReactMarkdown>
+                </div>
+              </div>
+            </motion.div>
+          )}
         </AnimatePresence>
-        {isTyping && (
+        {isTyping && streamingText === null && (
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
@@ -163,6 +191,17 @@ export default function ChatInterface() {
             <div className="glass-zenia-msg px-5 py-3 rounded-3xl rounded-tl-none italic text-rose-700 text-xs flex items-center gap-2">
               <Loader2 className="w-3 h-3 animate-spin" />
               Zenia está pensando...
+            </div>
+          </motion.div>
+        )}
+        {error && (
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="flex justify-center"
+          >
+            <div className="bg-rose-50 border border-rose-100 text-rose-600 px-6 py-3 rounded-2xl text-xs font-medium max-w-[90%] text-center shadow-sm">
+              {error}
             </div>
           </motion.div>
         )}
