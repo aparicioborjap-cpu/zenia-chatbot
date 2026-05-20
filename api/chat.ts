@@ -22,7 +22,7 @@ export async function POST(request: Request) {
     }
 
     const genAI = new GoogleGenerativeAI(apiKey);
-    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+  const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash-latest" });
 
     // Aquí va la lógica de tu chat. Para asegurarnos de que no falle nada
     // le pedimos una respuesta normal y la devolvemos estructurada limpia.
