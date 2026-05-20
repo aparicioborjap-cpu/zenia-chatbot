@@ -1,10 +1,10 @@
 {
-  "projectId": "gen-lang-client-0126864449",
-  "appId": "1:195130078815:web:993ca69fb6c3ba5e0a8dea",
-  "apiKey": "AIzaSyCJ7DLlQjUttfiPWOnipecXp-yFeNZfBCs",
-  "authDomain": "gen-lang-client-0126864449.firebaseapp.com",
-  "firestoreDatabaseId": "ai-studio-3303e783-15ef-4a0e-83cb-af9416c56edd",
-  "storageBucket": "gen-lang-client-0126864449.firebasestorage.app",
-  "messagingSenderId": "195130078815",
+  "projectId": "zenia-chatbot-42a5d",
+  "appId": "1:230024968073:web:cdc168ee374ae9a3605358",
+  "apiKey": "AIzaSyCe0uDv79m2R-JQ_5hgtPwp0RD0BNdeg6A",
+  "authDomain": "zenia-chatbot-42a5d.firebaseapp.com",
+  "firestoreDatabaseId": "default",
+  "storageBucket": "zenia-chatbot-42a5d.firebasestorage.app",
+  "messagingSenderId": "230024968073",
   "measurementId": ""
 }
