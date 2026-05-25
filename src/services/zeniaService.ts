@@ -38,5 +38,4 @@ export async function getZeniaResponseStream(
     console.error("Error calling Zenia API:", error);
     throw error;
   }
-}  }
 }
