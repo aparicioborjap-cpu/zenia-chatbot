@@ -17,7 +17,6 @@ export default function ChatInterface() {
   const [error, setError] = useState<string | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
 
-  // Auto-welcome for new users
   useEffect(() => {
     if (!profileLoading && !chatLoading && messages.length === 0 && !profile?.displayName) {
       const welcome = async () => {
@@ -64,10 +63,8 @@ export default function ChatInterface() {
     setError(null);
 
     try {
-      // 1. Save user msg to Firestore
       await sendMessage(userMsg, 'user');
 
-      // 2. Identify if this is the initial response (name and gender)
       if (!profile?.displayName && messages.length <= 2) {
         const lastZeniaMsg = messages.findLast(m => m.sender === 'zenia');
         if (lastZeniaMsg?.text.includes('¿cómo te llamas?')) {
@@ -75,24 +72,21 @@ export default function ChatInterface() {
           let detectedGender: 'masculino' | 'femenino' | 'no-binario' = 'femenino';
           if (lowerMsg.includes('masculino') || lowerMsg.includes('hombre') || lowerMsg.includes('chico') || lowerMsg.includes('él')) detectedGender = 'masculino';
           else if (lowerMsg.includes('neutro') || lowerMsg.includes('binario') || lowerMsg.includes('elle')) detectedGender = 'no-binario';
-          
-          // Simple name extraction: first word or the whole thing if short
           const name = userMsg.length < 15 ? userMsg : userMsg.split(/[ ,.!\n]/)[0];
           await updateName(name);
           await updateGender(detectedGender);
         }
       }
 
-      // 3. Get history for AI context (last 15 messages)
+      // Historial en formato Groq
       const history = messages
         .filter(m => !(m.sender === 'user' && m.text === userMsg))
         .slice(-15)
         .map(m => ({
-          role: m.sender === 'user' ? 'user' : 'model' as 'user' | 'model',
-          parts: [{ text: m.text }]
+          role: m.sender === 'user' ? 'user' : 'model',
+          text: m.text
         }));
 
-      // 4. Prepare upcoming events context (next 30 days)
       const now = new Date();
       const in30Days = new Date();
       in30Days.setDate(now.getDate() + 30);
@@ -107,7 +101,6 @@ export default function ChatInterface() {
           date: e.date?.toDate().toLocaleDateString('es-ES', { dateStyle: 'medium' })
         }));
 
-      // 5. Stream AI response
       setStreamingText("");
       const aiResponse = await getZeniaResponseStream(
         userMsg, 
@@ -120,7 +113,6 @@ export default function ChatInterface() {
         }
       );
 
-      // 6. Save complete AI response to Firestore
       if (aiResponse) {
         await sendMessage(aiResponse, 'zenia');
       }
