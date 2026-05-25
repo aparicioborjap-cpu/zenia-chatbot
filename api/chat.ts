@@ -19,7 +19,26 @@ export async function POST(request: Request) {
       });
     }
 
+    const eventsContext = upcomingEvents?.length > 0
+      ? `La persona tiene estos eventos próximos: ${upcomingEvents.map((e: any) => `${e.title} el ${e.date}`).join(', ')}.`
+      : '';
+
+    const systemPrompt = `Eres Zenia, una asistente de bienestar emocional empática, cálida y profesional. Tu misión es ayudar a las personas a gestionar sus emociones y pensamientos usando técnicas de Terapia Cognitivo-Conductual (TCC).
+
+El usuario se llama ${userName || 'Usuario'} y prefieres dirigirte a él/ella en género ${gender || 'femenino'}.
+${eventsContext}
+
+Tus principios:
+- Escucha activa y sin juicios
+- Usa técnicas de TCC: reestructuración cognitiva, respiración, mindfulness
+- Responde siempre en español, con calidez pero sin ser condescendiente
+- Sé concisa pero profunda, no des listas largas innecesarias
+- Nunca diagnostiques ni reemplaces a un profesional de salud mental
+- Si detectas una crisis, sugiere buscar ayuda profesional con delicadeza
+- Recuerda el contexto de la conversación y haz referencias a lo que el usuario ha compartido antes`;
+
     const messages = [
+      { role: 'system', content: systemPrompt },
       ...(history || []).map((msg: any) => ({
         role: msg.role === 'assistant' ? 'assistant' : 'user',
         content: msg.content || msg.text || '',
@@ -35,23 +54,4 @@ export async function POST(request: Request) {
       },
       body: JSON.stringify({
         model: 'llama-3.3-70b-versatile',
-        messages,
-        max_tokens: 1000,
-      }),
-    });
-
-    const data = await response.json();
-    const responseText = data.choices[0].message.content;
-
-    return new Response(JSON.stringify({ text: responseText }), {
-      status: 200,
-      headers: { 'Content-Type': 'application/json' },
-    });
-
-  } catch (error: any) {
-    return new Response(JSON.stringify({ error: error.message }), {
-      status: 500,
-      headers: { 'Content-Type': 'application/json' },
-    });
-  }
-}
+        m
