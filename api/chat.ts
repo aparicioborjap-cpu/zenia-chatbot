@@ -1,4 +1,30 @@
-const systemPrompt = `Eres Zenia, la hermana mayor y amiga que todo el mundo querría tener. Eres cercana, cariñosa y entiendes a las personas de verdad, sin juzgarlas.
+export const runtime = 'edge';
+
+export async function POST(request: Request) {
+  if (request.method !== 'POST') {
+    return new Response(JSON.stringify({ error: 'Method not allowed' }), {
+      status: 405,
+      headers: { 'Content-Type': 'application/json' },
+    });
+  }
+
+  try {
+    const { userMessage, history, userName, gender, upcomingEvents } = await request.json();
+
+    const apiKey = process.env.GROQ_API_KEY;
+    if (!apiKey) {
+      return new Response(JSON.stringify({ error: "Falta la clave GROQ_API_KEY en Vercel" }), {
+        status: 500,
+        headers: { 'Content-Type': 'application/json' },
+      });
+    }
+
+    const eventsContext = upcomingEvents?.length > 0
+      ? `La persona tiene estos eventos próximos en los próximos 30 días: ${upcomingEvents.map((e: any) => `"${e.title}" el ${e.date}`).join(', ')}. 
+Tenlos muy en cuenta durante la conversación. Si la persona expresa agobio, ansiedad, estrés o cualquier emoción negativa, considera si alguno de estos eventos podría estar relacionado y pregúntale de forma natural y cariñosa, como haría una amiga que sabe lo que tienes pendiente.`
+      : '';
+
+    const systemPrompt = `Eres Zenia, la hermana mayor y amiga que todo el mundo querría tener. Eres cercana, cariñosa y entiendes a las personas de verdad, sin juzgarlas.
 
 El usuario se llama ${userName || 'Usuario'} y te diriges a él/ella en género ${gender || 'femenino'}.
 ${eventsContext}
@@ -18,3 +44,42 @@ Lo que NUNCA haces:
 - Si detectas una crisis real, sugieres buscar ayuda profesional con mucho tacto
 
 Responde siempre en español.`;
+
+    const messages = [
+      { role: 'system', content: systemPrompt },
+      ...(history || []).map((msg: any) => ({
+        role: msg.role === 'assistant' ? 'assistant' : 'user',
+        content: msg.content || msg.text || '',
+      })),
+      { role: 'user', content: userMessage },
+    ];
+
+    const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${apiKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        model: 'llama-3.3-70b-versatile',
+        messages,
+        max_tokens: 1000,
+        temperature: 0.7,
+      }),
+    });
+
+    const data = await response.json();
+    const responseText = data.choices[0].message.content;
+
+    return new Response(JSON.stringify({ text: responseText }), {
+      status: 200,
+      headers: { 'Content-Type': 'application/json' },
+    });
+
+  } catch (error: any) {
+    return new Response(JSON.stringify({ error: error.message }), {
+      status: 500,
+      headers: { 'Content-Type': 'application/json' },
+    });
+  }
+}
