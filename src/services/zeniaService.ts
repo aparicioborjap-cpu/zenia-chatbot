@@ -1,6 +1,6 @@
 export async function getZeniaResponseStream(
   userMessage: string, 
-  history: { role: 'user' | 'model', parts: { text: string }[] }[], 
+  history: { role: 'user' | 'model', text: string }[], 
   userName: string = 'Paula', 
   gender: string = 'femenino',
   upcomingEvents: { title: string, date: string }[] = [],
@@ -14,7 +14,10 @@ export async function getZeniaResponseStream(
       },
       body: JSON.stringify({
         userMessage,
-        history,
+        history: history.map(msg => ({
+          role: msg.role === 'model' ? 'assistant' : 'user',
+          content: msg.text || '',
+        })),
         userName,
         gender,
         upcomingEvents,
@@ -35,4 +38,5 @@ export async function getZeniaResponseStream(
     console.error("Error calling Zenia API:", error);
     throw error;
   }
+}  }
 }
