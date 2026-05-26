@@ -30,7 +30,7 @@ export default function DiaryView() {
         collection(db, 'conversations'),
         where('userId', '==', user.uid),
         orderBy('timestamp', 'desc'),
-        limit(80)
+        limit(30)
       );
       const snapshot = await getDocs(q);
       const conversations = snapshot.docs.map(doc => ({
@@ -42,7 +42,7 @@ export default function DiaryView() {
       // Solo mensajes del usuario
       const userMessages = conversations
         .filter(m => m.sender === 'user')
-        .map(m => `[${m.date}]: ${m.text}`)
+      .map(m => `[${m.date}]: ${m.text.slice(0, 200)}`)
         .join('\n');
 
       // Mood logs
