@@ -1,8 +1,3 @@
-/**
- * @license
- * SPDX-License-Identifier: Apache-2.0
- */
-
 import { AuthProvider, useAuth } from './hooks/useAuth.tsx';
 import { useUserProfile } from './hooks/useUserProfile.tsx';
 import Navbar from './components/Navbar.tsx';
@@ -13,6 +8,7 @@ import DiaryView from './components/DiaryView.tsx';
 import CalendarView from './components/CalendarView.tsx';
 import SettingsView from './components/SettingsView.tsx';
 import AuthModal from './components/AuthModal.tsx';
+import EmergencyKit from './components/EmergencyKit.tsx';
 import { motion, AnimatePresence } from 'motion/react';
 import { useState } from 'react';
 
@@ -34,7 +30,6 @@ function Dashboard() {
 
   return (
     <div className="min-h-screen flex flex-col items-center pb-12 relative overflow-x-hidden">
-      {/* Background Decorative Orb */}
       <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] opacity-10 bg-gradient-to-tr from-pink-300 to-rose-200 rounded-full blur-[120px] pointer-events-none" />
 
       <Navbar activeTab={activeTab} setActiveTab={setActiveTab} />
@@ -109,7 +104,9 @@ function Dashboard() {
           Zenia Wellness • Basado en Evidencia Realista
         </p>
       </footer>
+
       <AuthModal isOpen={isAuthOpen} onClose={() => setIsAuthOpen(false)} />
+      <EmergencyKit />
     </div>
   );
 }
