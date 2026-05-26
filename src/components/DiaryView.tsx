@@ -1,16 +1,21 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useMoodLogs } from '../hooks/useMoodLogs.tsx';
+import { useAuth } from '../hooks/useAuth.tsx';
+import { collection, query, where, orderBy, limit, getDocs } from 'firebase/firestore';
+import { db } from '../firebase.ts';
 import { motion, AnimatePresence } from 'motion/react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { Calendar as CalendarIcon, Inbox, Sparkles, Loader2 } from 'lucide-react';
 
 export default function DiaryView() {
   const { logs, loading } = useMoodLogs();
+  const { user } = useAuth();
   const [analysis, setAnalysis] = useState<string | null>(null);
   const [analyzing, setAnalyzing] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const analyzePatterns = async () => {
+    if (!user) return;
     if (logs.length < 3) {
       setError('Necesitas al menos 3 registros de ánimo para analizar patrones.');
       return;
@@ -20,6 +25,27 @@ export default function DiaryView() {
     setError(null);
 
     try {
+      // Obtener conversaciones de Firestore
+      const q = query(
+        collection(db, 'conversations'),
+        where('userId', '==', user.uid),
+        orderBy('timestamp', 'desc'),
+        limit(80)
+      );
+      const snapshot = await getDocs(q);
+      const conversations = snapshot.docs.map(doc => ({
+        text: doc.data().text,
+        sender: doc.data().sender,
+        date: doc.data().timestamp?.toDate().toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long' }),
+      }));
+
+      // Solo mensajes del usuario
+      const userMessages = conversations
+        .filter(m => m.sender === 'user')
+        .map(m => `[${m.date}]: ${m.text}`)
+        .join('\n');
+
+      // Mood logs
       const moodSummary = logs.slice(0, 30).map(log => ({
         mood: log.mood,
         date: log.timestamp?.toDate().toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long' }),
@@ -30,14 +56,20 @@ export default function DiaryView() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          userMessage: `Analiza estos registros de ánimo y dame un análisis en 3 partes:
-1. **Estados más frecuentes**: cuáles son los estados de ánimo que más se repiten
-2. **Patrones de tiempo**: si hay días de la semana o momentos del día en que me siento peor o mejor
-3. **Ejercicios personalizados**: 2-3 ejercicios de TCC específicos para mis patrones
+          userMessage: `Analiza estos datos de la usuaria y dame un análisis profundo y personal en 4 partes:
 
-Registros: ${JSON.stringify(moodSummary)}
+1. **Temas recurrentes**: ¿De qué habla más? ¿Qué situaciones o temas aparecen repetidamente en sus mensajes?
+2. **Patrones emocionales**: ¿Qué emociones se asocian a esos temas? ¿Hay momentos del día o días de la semana en que se siente peor?
+3. **Conexiones**: ¿Hay relación entre sus temas de conversación y sus registros de ánimo?
+4. **Ejercicios personalizados**: 2-3 ejercicios de TCC específicos para SUS patrones concretos, no genéricos
 
-Responde de forma cercana y personal, como una amiga que analiza mis datos con cariño. Sé concisa pero útil.`,
+Mensajes de la usuaria en el chat:
+${userMessages}
+
+Registros de ánimo:
+${JSON.stringify(moodSummary)}
+
+Responde como Zenia: cercana, directa, sin rodeos. Como una amiga que ha leído todo lo que le has contado y te da un análisis honesto y útil. Nada de frases genéricas.`,
           history: [],
           userName: 'Usuario',
           gender: 'femenino',
@@ -106,7 +138,7 @@ Responde de forma cercana y personal, como una amiga que analiza mis datos con c
         <div className="flex items-center justify-between">
           <div>
             <h2 className="text-[10px] uppercase tracking-[0.2em] text-rose-500 font-bold">Análisis de Patrones</h2>
-            <p className="text-xs text-gray-400 mt-1">Zenia analiza tus registros y te da ejercicios personalizados</p>
+            <p className="text-xs text-gray-400 mt-1">Zenia analiza tus conversaciones y registros para detectar patrones reales</p>
           </div>
           <button
             onClick={analyzePatterns}
@@ -135,7 +167,7 @@ Responde de forma cercana y personal, como una amiga que analiza mis datos con c
             <motion.div
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
-              className="bg-rose-50/50 rounded-2xl p-6 border border-rose-100/50 text-sm text-gray-700 leading-relaxed space-y-2 whitespace-pre-wrap"
+              className="bg-rose-50/50 rounded-2xl p-6 border border-rose-100/50 text-sm text-gray-700 leading-relaxed whitespace-pre-wrap"
             >
               {analysis}
             </motion.div>
