@@ -67,3 +67,22 @@
 .markdown-body ol {
   @apply list-decimal ml-4 mb-4;
 }
+/* Scrollbar oculto en móvil */
+.scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
+
+/* Chat fijo en móvil */
+@media (max-width: 768px) {
+  .chat-container {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: calc(100vh - 110px);
+  }
+}
