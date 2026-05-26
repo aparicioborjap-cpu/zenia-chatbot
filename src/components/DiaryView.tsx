@@ -1,16 +1,64 @@
+import { useState } from 'react';
 import { useMoodLogs } from '../hooks/useMoodLogs.tsx';
-import { motion } from 'motion/react';
+import { motion, AnimatePresence } from 'motion/react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
-import { Calendar as CalendarIcon, Inbox } from 'lucide-react';
+import { Calendar as CalendarIcon, Inbox, Sparkles, Loader2 } from 'lucide-react';
 
 export default function DiaryView() {
   const { logs, loading } = useMoodLogs();
+  const [analysis, setAnalysis] = useState<string | null>(null);
+  const [analyzing, setAnalyzing] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const analyzePatterns = async () => {
+    if (logs.length < 3) {
+      setError('Necesitas al menos 3 registros de ánimo para analizar patrones.');
+      return;
+    }
+    setAnalyzing(true);
+    setAnalysis(null);
+    setError(null);
+
+    try {
+      const moodSummary = logs.slice(0, 30).map(log => ({
+        mood: log.mood,
+        date: log.timestamp?.toDate().toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long' }),
+        hour: log.timestamp?.toDate().getHours(),
+      }));
+
+      const response = await fetch('/api/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userMessage: `Analiza estos registros de ánimo y dame un análisis en 3 partes:
+1. **Estados más frecuentes**: cuáles son los estados de ánimo que más se repiten
+2. **Patrones de tiempo**: si hay días de la semana o momentos del día en que me siento peor o mejor
+3. **Ejercicios personalizados**: 2-3 ejercicios de TCC específicos para mis patrones
+
+Registros: ${JSON.stringify(moodSummary)}
+
+Responde de forma cercana y personal, como una amiga que analiza mis datos con cariño. Sé concisa pero útil.`,
+          history: [],
+          userName: 'Usuario',
+          gender: 'femenino',
+          upcomingEvents: [],
+        }),
+      });
+
+      const data = await response.json();
+      setAnalysis(data.text);
+    } catch (err: any) {
+      setError('No se pudo generar el análisis. Inténtalo de nuevo.');
+    } finally {
+      setAnalyzing(false);
+    }
+  };
 
   if (loading) return <div className="p-12 text-center text-rose-300">Cargando tu diario...</div>;
 
   if (logs.length === 0) {
     return (
-      <motion.div 
+      <motion.div
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         className="flex flex-col items-center justify-center py-20 px-6 text-center"
@@ -26,14 +74,15 @@ export default function DiaryView() {
     );
   }
 
-  // Simple data transformation for chart
   const chartData = [...logs].reverse().slice(-7).map(log => ({
     date: log.timestamp?.toDate().toLocaleDateString('es-ES', { weekday: 'short' }),
     val: log.mood === 'Empoderada' ? 5 : log.mood === 'Calmada' ? 4 : log.mood === 'Rumiando' ? 3 : log.mood === 'Frustrada' ? 2 : 1
   }));
 
   return (
-    <div className="w-full space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
+    <div className="w-full space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700 pb-20">
+
+      {/* Gráfico */}
       <div className="glass-panel p-8 rounded-[2rem] border border-white/40 shadow-lg">
         <h2 className="text-[10px] uppercase tracking-[0.2em] text-rose-500 font-bold mb-6">Patrón de Ánimo (Últimos registros)</h2>
         <div className="h-64 w-full">
@@ -42,7 +91,7 @@ export default function DiaryView() {
               <CartesianGrid strokeDasharray="3 3" stroke="#fce7f3" vertical={false} />
               <XAxis dataKey="date" stroke="#f472b6" fontSize={10} tickLine={false} axisLine={false} />
               <YAxis hide domain={[0, 6]} />
-              <Tooltip 
+              <Tooltip
                 contentStyle={{ backgroundColor: 'rgba(255, 255, 255, 0.8)', borderRadius: '1rem', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
                 itemStyle={{ color: '#e11d48', fontSize: '12px' }}
               />
@@ -52,11 +101,54 @@ export default function DiaryView() {
         </div>
       </div>
 
+      {/* Análisis de patrones */}
+      <div className="glass-panel p-8 rounded-[2rem] border border-white/40 shadow-lg space-y-4">
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className="text-[10px] uppercase tracking-[0.2em] text-rose-500 font-bold">Análisis de Patrones</h2>
+            <p className="text-xs text-gray-400 mt-1">Zenia analiza tus registros y te da ejercicios personalizados</p>
+          </div>
+          <button
+            onClick={analyzePatterns}
+            disabled={analyzing}
+            className="flex items-center gap-2 px-4 py-2 bg-rose-400 text-white rounded-2xl text-[10px] font-bold uppercase tracking-widest hover:bg-rose-500 transition-all active:scale-95 disabled:opacity-50"
+          >
+            {analyzing ? (
+              <><Loader2 className="w-3 h-3 animate-spin" /> Analizando...</>
+            ) : (
+              <><Sparkles className="w-3 h-3" /> Analizar</>
+            )}
+          </button>
+        </div>
+
+        <AnimatePresence>
+          {error && (
+            <motion.p
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              className="text-xs text-rose-400 bg-rose-50 rounded-2xl px-4 py-3"
+            >
+              {error}
+            </motion.p>
+          )}
+          {analysis && (
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="bg-rose-50/50 rounded-2xl p-6 border border-rose-100/50 text-sm text-gray-700 leading-relaxed space-y-2 whitespace-pre-wrap"
+            >
+              {analysis}
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
+
+      {/* Registros recientes */}
       <div className="space-y-4">
         <h2 className="text-[10px] uppercase tracking-[0.2em] text-rose-500 font-bold ml-4">Registros Recientes</h2>
         <div className="grid gap-4">
           {logs.slice(0, 10).map((log) => (
-            <motion.div 
+            <motion.div
               key={log.id}
               initial={{ opacity: 0, x: -10 }}
               animate={{ opacity: 1, x: 0 }}
