@@ -6,17 +6,18 @@ import { useAuth } from '../hooks/useAuth.tsx';
 import { useUserProfile } from '../hooks/useUserProfile.tsx';
 import { Check } from 'lucide-react';
 
+// Cada emoción tiene sus tres formas: femenino, masculino, no-binario
 const MOODS = [
-  { label: 'Agobiad', color: 'bg-blue-400' },
-  { label: 'Frustrad', color: 'bg-orange-400' },
-  { label: 'Rumiando', color: 'bg-amber-400' },
-  { label: 'Calmad', color: 'bg-emerald-400' },
-  { label: 'Empoderad', color: 'bg-purple-400' },
-  { label: 'Triste', color: 'bg-indigo-400' },
-  { label: 'Ansios', color: 'bg-rose-400' },
-  { label: 'Enfadad', color: 'bg-red-500' },
-  { label: 'Alegre', color: 'bg-pink-400' },
-  { label: 'Cansad', color: 'bg-slate-400' },
+  { key: 'agobiada',    labels: ['Agobiada', 'Agobiado', 'Agobiade'],    color: 'bg-blue-400' },
+  { key: 'frustrada',   labels: ['Frustrada', 'Frustrado', 'Frustrade'],  color: 'bg-orange-400' },
+  { key: 'rumiando',    labels: ['Rumiando', 'Rumiando', 'Rumiando'],     color: 'bg-amber-400' },
+  { key: 'calmada',     labels: ['Calmada', 'Calmado', 'Calmode'],        color: 'bg-emerald-400' },
+  { key: 'empoderada',  labels: ['Empoderada', 'Empoderado', 'Empoderade'], color: 'bg-purple-400' },
+  { key: 'triste',      labels: ['Triste', 'Triste', 'Triste'],           color: 'bg-indigo-400' },
+  { key: 'ansiosa',     labels: ['Ansiosa', 'Ansioso', 'Ansiose'],        color: 'bg-rose-400' },
+  { key: 'enfadada',    labels: ['Enfadada', 'Enfadado', 'Enfadade'],     color: 'bg-red-500' },
+  { key: 'alegre',      labels: ['Alegre', 'Alegre', 'Alegre'],           color: 'bg-pink-400' },
+  { key: 'cansada',     labels: ['Cansada', 'Cansado', 'Cansade'],        color: 'bg-slate-400' },
 ];
 
 export default function MoodTracker() {
@@ -26,16 +27,17 @@ export default function MoodTracker() {
   const [loading, setLoading] = useState(false);
   const [saved, setSaved] = useState(false);
 
-  const suffix = profile?.gender === 'masculino' ? 'o' : profile?.gender === 'no-binario' ? 'e' : 'a';
+  const genderIndex = profile?.gender === 'masculino' ? 1 : profile?.gender === 'no-binario' ? 2 : 0;
 
-  const handleMoodSelect = async (mood: string) => {
+  const getLabel = (mood: typeof MOODS[0]) => mood.labels[genderIndex];
+
+  const handleMoodSelect = async (mood: typeof MOODS[0]) => {
     if (!user || loading) return;
     setLoading(true);
-    setSelected(mood);
-    
+    setSelected(mood.key);
     try {
       await addDoc(collection(db, 'mood_logs'), {
-        mood: mood.endsWith('d') || mood.endsWith('s') ? `${mood}${suffix}` : mood,
+        mood: getLabel(mood),
         userId: user.uid,
         timestamp: serverTimestamp()
       });
@@ -58,38 +60,36 @@ export default function MoodTracker() {
       </div>
 
       <div className="grid grid-cols-2 sm:grid-cols-5 gap-6">
-        {MOODS.map((m) => {
-          const displayLabel = m.label.endsWith('d') || m.label.endsWith('s') ? `${m.label}${suffix}` : m.label;
-          return (
-            <button
-              key={m.label}
-              onClick={() => handleMoodSelect(m.label)}
-              className="group flex flex-col items-center gap-4 transition-all"
+        {MOODS.map((m) => (
+          <button
+            key={m.key}
+            onClick={() => handleMoodSelect(m)}
+            className="group flex flex-col items-center gap-4 transition-all"
+          >
+            <div
+              className={`w-12 h-12 rounded-full transition-all duration-500 relative flex items-center justify-center ${
+                selected === m.key
+                  ? `${m.color} scale-110 shadow-lg`
+                  : 'bg-white/40 border border-white/60 hover:border-rose-200'
+              }`}
             >
-              <div 
-                className={`w-12 h-12 rounded-full transition-all duration-500 relative flex items-center justify-center ${
-                  selected === m.label 
-                    ? `${m.color} scale-110 shadow-lg` 
-                    : 'bg-white/40 border border-white/60 hover:border-rose-200'
-                }`}
-              >
-                {selected === m.label && (
-                  <motion.div 
-                    layoutId="outline"
-                    className="absolute inset-0 rounded-full animate-ping opacity-20 bg-current"
-                  />
-                )}
-                <div className={`w-3 h-3 rounded-full ${selected === m.label ? 'bg-white' : m.color} opacity-80`}></div>
-              </div>
-              <span className={`text-[9px] uppercase font-bold tracking-widest text-center leading-tight transition-colors ${
-                selected === m.label ? 'text-gray-800' : 'text-gray-400 group-hover:text-rose-400'
-              }`}>
-                {displayLabel}
-              </span>
-            </button>
-          );
-        })}
+              {selected === m.key && (
+                <motion.div
+                  layoutId="outline"
+                  className="absolute inset-0 rounded-full animate-ping opacity-20 bg-current"
+                />
+              )}
+              <div className={`w-3 h-3 rounded-full ${selected === m.key ? 'bg-white' : m.color} opacity-80`}></div>
+            </div>
+            <span className={`text-[9px] uppercase font-bold tracking-widest text-center leading-tight transition-colors ${
+              selected === m.key ? 'text-gray-800' : 'text-gray-400 group-hover:text-rose-400'
+            }`}>
+              {getLabel(m)}
+            </span>
+          </button>
+        ))}
       </div>
+
       {saved && (
         <motion.div
           initial={{ opacity: 0, scale: 0.9 }}
